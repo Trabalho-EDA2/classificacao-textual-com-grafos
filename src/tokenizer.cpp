@@ -2,21 +2,33 @@
 #include <sstream>
 #include <vector>
 #include <string>
-
+#include <cctype>
 
 using namespace std;
 
-vector<string> word_catch(string phrase){
+vector<string> word_catch(string phrase)
+{
     stringstream ss(phrase);
     string word;
     vector<string> words;
 
-    while(ss >> word){
-        erase_if(word, [](char c){
-            return ispunct(c);
-        });
+    while (ss >> word)
+    {
+        string cleaned_word = "";
 
-        words.push_back(word);
+        
+        for (char c : word)
+        {
+            if (!ispunct(c))
+            {
+                cleaned_word += c;
+            }
+        }
+
+        if (!cleaned_word.empty())
+        {
+            words.push_back(cleaned_word);
+        }
     }
 
     return words;

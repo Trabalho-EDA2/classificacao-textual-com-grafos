@@ -1,3 +1,4 @@
+#include "new_graph.hpp"
 #include <algorithm>
 #include <cstdio>
 #include <vector>
@@ -6,149 +7,122 @@
 
 using namespace std;
 
-typedef enum node_type
+// Construtor da classe
+graph::graph(int n)
 {
-    TEXT,
-    WORD,
-    SENTIMENT
-};
+    adj_list = vector<ll_node *>(n, nullptr);
+    nodes_catalog = vector<node *>(n, nullptr);
+    this->n = n;
+    curr_index = 0;
+}
 
-typedef struct node
-{ // nó do grafo
-    string data;
-    node_type type;
-    int index;
-    // float weight;
-} node;
-
-typedef struct ll_node
-{ // nó da lista encadeada
-    node *data;
-    ll_node *prox;
-} ll_node;
-
-// Se fizessemos em só uma struct o nó do grafo teria que guardar referências da
-// lista de adjacência, isso fica estranho
-
-class graph
+// Método para redimensionar o grafo preservando os dados
+void graph::resize_graph(int new_n)
 {
-    int n;
-    vector<ll_node *> adj_list;
-    int curr_index; // ainda tem que implementar a lógica de incremento conforme novos nós do grafo são adicionados
+    adj_list.resize(new_n, nullptr);
+    nodes_catalog.resize(new_n, nullptr);
+    n = new_n;
+}
 
-public:
-    graph(int n)
-    {
-        // nao precisa de this pq n tem conflito de nomes
-        adj_list = vector<ll_node *>(n, nullptr);
-        this->n = n;
-        curr_index = 0;
-    };
-
-    void resize_graph(int new_n)
-    { // dessa forma já aumenta o tamanho preservando os dados
-        adj_list.resize(new_n);
-        n = new_n;
-    }
-
-    bool has_edge(node *node1, node *node2)
-    {
-        if (node1 == nullptr || node2 == nullptr)
-            return false;
-
-        if (node1->index >= n)
-            return false;
-
-        ll_node *atual = adj_list[node1->index];
-
-        while (atual != nullptr)
-        {
-            if (atual->data == node2)
-                return true;
-
-            atual = atual->prox;
-        }
-
+// Verifica se existe uma aresta entre dois nós
+bool graph::has_edge(node *node1, node *node2)
+{
+    if (node1 == nullptr || node2 == nullptr)
         return false;
+
+    if (node1->index >= n)
+        return false;
+
+    ll_node *atual = adj_list[node1->index];
+
+    while (atual != nullptr)
+    {
+        if (atual->data == node2)
+            return true;
+
+        atual = atual->prox;
     }
-    
-    void add_edge(node *node1, node *node2)
-    { // fazer overload para o peso da aresta
-        // verificar se node_type é diferente - grafos partidos não podem ter ligação entre elementos do mesmo tipo
-        if (!has_edge(node1, node2) && node1->type != node2->type)
+
+    return false;
+}
+
+// Adiciona uma aresta bidirecional (se os tipos forem diferentes)
+void graph::add_edge(node *node1, node *node2)
+{
+    if (!has_edge(node1, node2) && node1->type != node2->type)
+    {
+        if (max(node1->index, node2->index) + 1 >= n)
         {
-            if (max(node1->index, node2->index) + 1 >= n)
-            {
-                resize_graph(max({2 * n, node1->index + 1, node2->index + 1}));
-            }
-    
-            add_ll_node(adj_list[node1->index], node2);
-            add_ll_node(adj_list[node2->index], node1);
-        }
-    };
-    
-    void remove_edge(int node1, int node2)
-    {
-        // verifica se os índices fazem sentido no tamanho atual do vetor
-        if (node1 >= n || node2 >= n)
-            return;
-    
-        // Remove o node2 da lista do node1
-        remove_from_ll(adj_list[node1], node2);
-    
-        // Remove o node1 da lista do node2
-        remove_from_ll(adj_list[node2], node1);
-    }
-    
-    void print_adj_matrix()
-    {
-    }
-
-private:
-    void add_ll_node(ll_node *&ll_head, node *new_node)
-    {
-        ll_node *new_ll_node = new ll_node();
-        new_ll_node->data = new_node;
-
-        // ll_head possui o endereço para caixa A
-        //  Adição da caixa B, aponta para caixa A
-        new_ll_node->prox = ll_head;
-
-        // atualizo o endereço do head para caixa B
-        ll_head = new_ll_node;
-    }
-
-    
-    // Função auxiliar privada para remover um nó específico de uma lista
-    void remove_from_ll(ll_node *&ll_head, int target_index)
-    {
-        ll_node *atual = ll_head;
-        ll_node *anterior = nullptr;
-
-        // Varre a lista procurando o nó com o índice alvo
-        while (atual != nullptr && atual->data->index != target_index)
-        {
-            anterior = atual;    // O anterior assume o lugar do atual
-            atual = atual->prox; // O atual dá um passo para frente
+            resize_graph(max({2 * n, node1->index + 1, node2->index + 1}));
         }
 
-        // Se atual for nullptr, significa que a aresta não existia nessa lista
-        if (atual == nullptr)
-            return;
-
-        // CASO 1: O nó a ser removido é o primeiro da lista
-        if (anterior == nullptr)
-        {
-            ll_head = atual->prox; // A cabeça passa a ser o segundo nó
-        }
-        // CASO 2: O nó está no meio ou no fim
-        else
-        {
-            anterior->prox = atual->prox; // O anterior pula o atual e aponta para o próximo
-        }
-
-        // Deleta a caixinha da memória para não ter vazamento!
-        delete atual;
+        add_ll_node(adj_list[node1->index], node2);
+        add_ll_node(adj_list[node2->index], node1);
     }
-    
-};
+}
+
+// Remove uma aresta com base nos índices
+void graph::remove_edge(int node1, int node2)
+{
+    if (node1 >= n || node2 >= n)
+        return;
+
+    remove_from_ll(adj_list[node1], node2);
+    remove_from_ll(adj_list[node2], node1);
+}
+
+// Imprime a lista de adjacência do grafo
+void graph::print_adj_list()
+{
+    for (int i = 0; i < n; i++)
+    {
+        // Se a posição do catálogo não estiver vazia, pegamos o nome do dono
+        string nome_dono = (nodes_catalog[i] != nullptr) ? nodes_catalog[i]->data : "VAZIO";
+
+        printf("No [%d](%s) se conecta com: ", i, nome_dono.c_str());
+
+        ll_node *current = adj_list[i];
+        while (current != nullptr)
+        {
+            printf("| %s | ", current->data->data.c_str()); 
+            current = current->prox;
+        }
+        printf("\n");
+    }
+}
+
+// Método privado para inserir um nó no início da lista encadeada
+void graph::add_ll_node(ll_node * &ll_head, node * new_node)
+{
+    ll_node *new_ll_node = new ll_node();
+    new_ll_node->data = new_node;
+    new_ll_node->prox = ll_head;
+    ll_head = new_ll_node;
+}
+
+// Método privado auxiliar para remover um nó específico de uma lista encadeada
+void graph::remove_from_ll(ll_node * &ll_head, int target_index)
+{
+    ll_node *atual = ll_head;
+    ll_node *anterior = nullptr;
+
+    while (atual != nullptr && atual->data->index != target_index)
+    {
+        anterior = atual;
+        atual = atual->prox;
+    }
+
+    if (atual == nullptr)
+        return;
+
+    if (anterior == nullptr)
+    {
+        ll_head = atual->prox;
+    }
+    else
+    {
+        anterior->prox = atual->prox;
+    }
+
+    delete atual;
+}

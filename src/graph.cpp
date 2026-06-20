@@ -54,8 +54,3 @@ class graph {
         }
     }
 };
-
-
-int main(){
-
-}

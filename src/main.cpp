@@ -2,6 +2,7 @@
 #include "new_graph.hpp"
 #include "tokenizer.hpp"
 #include <map>
+#include "dataset.hpp"
 
 using namespace std;
 
@@ -28,9 +29,9 @@ int main(){
     g.nodes_catalog[2] = neutro;
 
     int curr_index = 3;
-
     map<string, node*> dicionario;
 
+    // teste de inserção e arestas no grafo
     string texto_teste = "amazing movie i love it";
     node* no_comentario = new node();
     
@@ -61,5 +62,7 @@ int main(){
         }
     }
     g.print_adj_list();
+
+    // o teste finaliza aqui
     return 0;
 }

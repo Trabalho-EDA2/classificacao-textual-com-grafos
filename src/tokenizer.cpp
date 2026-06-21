@@ -21,7 +21,7 @@ vector<string> word_catch(string phrase)
         {
             if (!ispunct(c))
             {
-                cleaned_word += c;
+                cleaned_word += static_cast<char>(tolower(static_cast<unsigned char>(c)));
             }
         }
 

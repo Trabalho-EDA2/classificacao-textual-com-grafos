@@ -1,9 +1,9 @@
 CXX = g++
-PYTHON = python
+PYTHON = py -3
 SPACY_MODEL = en_core_web_sm
 APP = app.exe
 
-SRC = src/main.cpp src/tokenizer.cpp
+SRC = src/main.cpp src/tokenizer.cpp src/dataset.cpp src/new_graph.cpp
 OBJ = $(SRC:.cpp=.o)
 
 .PHONY: all setup preprocess build run clean
@@ -12,19 +12,19 @@ all: run
 
 setup:
 	$(PYTHON) -m pip install -r requirements.txt
-	@$(PYTHON) -c "import spacy; spacy.load('$(SPACY_MODEL)')" >/dev/null 2>&1 || $(PYTHON) -m spacy download $(SPACY_MODEL)
+	@$(PYTHON) -c "import spacy; spacy.load('$(SPACY_MODEL)')" >NUL 2>&1 || $(PYTHON) -m spacy download $(SPACY_MODEL)
 
 preprocess: setup
 	$(PYTHON) scripts/preprocess.py
 
-build: preprocess $(OBJ)
+build: $(OBJ)
 	$(CXX) $(OBJ) -o $(APP)
 
-run: build
-	./$(APP)
+run: preprocess build
+	.\$(APP)
 
 %.o: %.cpp
 	$(CXX) -std=c++17 -Wall -c $< -o $@
 
 clean:
-	rm -f src/*.o $(APP) app
+	powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue 'src\\*.o', '$(APP)'"

@@ -66,15 +66,15 @@ int main(){
 
     // o teste finaliza aqui
 
-    cout << "Povoando o grafo com as 10.000 linhas do IMDB..." << endl;
+    cout << "Povoando o grafo com as 10.000 linhas processadas do IMDB..." << endl;
 
     // 3. CHAMADA REAL DA SUA FUNÇÃO DO DATASET!
     // Toda aquela lógica de criar nós de comentários e palavras vai acontecer aqui dentro.
-    catch_coment_and_value("data/IMDB_dataset.csv", g, dicionario, curr_index);
+    catch_coment_and_value("data/IMDB_processed.csv", g, dicionario, curr_index);
 
     cout << "Grafo preenchido com sucesso!" << endl;
     
-    g.print_adj_list();
+    // g.print_adj_list();
     
     return 0;
 }

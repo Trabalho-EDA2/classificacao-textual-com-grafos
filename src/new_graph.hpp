@@ -26,6 +26,7 @@ typedef struct ll_node
 { // nó da lista encadeada
     node *data;
     ll_node *prox;
+    float weight;
 } ll_node;
 
 // Se fizessemos em só uma struct o nó do grafo teria que guardar referências da

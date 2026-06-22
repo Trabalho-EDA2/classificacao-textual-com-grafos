@@ -7,7 +7,7 @@
 
 using namespace std;
 
-// A assinatura aqui PRECISA ser idêntica à do datast.cpp
 void catch_coment_and_value(string pathCSV, graph &g, map<string, node*> &dicionario, int &curr_index);
+string classify_review(string frase, graph &g, map<string, node*> &dicionario);
 
 #endif

@@ -35,10 +35,10 @@ typedef struct ll_node
 class graph
 {
     int n;
-    vector<ll_node *> adj_list;
     int curr_index;
     
     public:
+    vector<ll_node *> adj_list;
     vector<node*> nodes_catalog;
     graph(int n); // Construtor limpo
     void resize_graph(int new_n);

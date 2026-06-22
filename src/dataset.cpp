@@ -4,6 +4,7 @@
 #include <vector>
 #include "dataset.hpp"
 #include "tokenizer.hpp"
+#include <set> 
 
 using namespace std;
 
@@ -42,7 +43,6 @@ void catch_coment_and_value(string pathCSV, graph &g, map<string, node *> &dicio
             no_comentario->type = TEXT;
             no_comentario->index = curr_index++;
 
-       
             if (no_comentario->index >= g.nodes_catalog.size())
             {
                 g.resize_graph(max((int)g.nodes_catalog.size() * 2, no_comentario->index + 1));
@@ -66,7 +66,6 @@ void catch_coment_and_value(string pathCSV, graph &g, map<string, node *> &dicio
                     new_word->type = WORD;
                     new_word->index = curr_index++;
 
-                    
                     if (new_word->index >= g.nodes_catalog.size())
                     {
                         g.resize_graph(max((int)g.nodes_catalog.size() * 2, new_word->index + 1));
@@ -88,4 +87,60 @@ void catch_coment_and_value(string pathCSV, graph &g, map<string, node *> &dicio
         }
         qtdToTest++;
     }
+}
+
+string classify_review(string frase, graph &g, map<string, node *> &dicionario)
+{
+    vector<string> word_list = word_catch(frase);
+
+    float score_positivo = 0.0f;
+    float score_negativo = 0.0f;
+    
+    set<string> stopwords = {"and", "the", "a", "an", "is", "it", "to", "of", "this", "was", "in", "that", "i", "for", "with", "as", "on", "but", "are", "be"};
+
+    cout << "\n[DEBUG] Analisando a frase: " << frase << endl;
+
+    for (string word : word_list)
+    {
+        // 1. Ignora se for Stopword
+        if (stopwords.count(word)) {
+            cout << "  [PULADA] '" << word << "' (Stopword ignorada)" << endl;
+            continue;
+        }
+
+        // 2. Ignora se não existir no grafo
+        if (!dicionario.count(word)) {
+            cout << "  [INEDITA] '" << word << "' (Nao existe no grafo)" << endl;
+            continue;
+        }
+
+        int word_index = dicionario[word]->index;
+        ll_node *atual = g.adj_list[word_index];
+
+        float peso_pos = 0.0f;
+        float peso_neg = 0.0f;
+
+        while (atual != nullptr)
+        {
+            if (atual->data->index == 0) peso_pos = atual->weight;
+            else if (atual->data->index == 1) peso_neg = atual->weight;
+            
+            atual = atual->prox;
+        }
+        
+        // Em vez de somar o peso bruto, somamos a DIFERENÇA. 
+        if (peso_pos > peso_neg) {
+            score_positivo += (peso_pos - peso_neg);
+        } else if (peso_neg > peso_pos) {
+            score_negativo += (peso_neg - peso_pos);
+        }
+
+        cout << "  -> '" << word << "' | POS: " << peso_pos << " | NEG: " << peso_neg << endl;
+    }
+
+    cout << ">>> PONTUACAO FINAL -> POSITIVA: " << score_positivo << " | NEGATIVA: " << score_negativo << endl;
+
+    if (score_positivo > score_negativo) return "positive";
+    else if (score_negativo > score_positivo) return "negative";
+    else return "neutral";
 }

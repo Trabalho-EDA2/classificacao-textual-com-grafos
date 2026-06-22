@@ -13,10 +13,7 @@ namespace
     string trim_carriage_return(string value)
     {
         if (!value.empty() && value.back() == '\r')
-        {
             value.pop_back();
-        }
-
         return value;
     }
 
@@ -31,9 +28,8 @@ namespace
         new_word->index = curr_index++;
 
         if (new_word->index >= static_cast<int>(g.nodes_catalog.size()))
-        {
             g.resize_graph(max((int)g.nodes_catalog.size() * 2, new_word->index + 1));
-        }
+
         g.nodes_catalog[new_word->index] = new_word;
         dicionario[word] = new_word;
 
@@ -43,12 +39,8 @@ namespace
     void add_cooccurrence_edges(graph &g, const vector<node *> &unique_words)
     {
         for (size_t i = 0; i < unique_words.size(); i++)
-        {
             for (size_t j = i + 1; j < unique_words.size(); j++)
-            {
                 g.add_edge(unique_words[i], unique_words[j]);
-            }
-        }
     }
 }
 
@@ -108,9 +100,8 @@ void catch_coment_and_value(string pathCSV, graph &g, map<string, node *> &dicio
         no_comentario->index = curr_index++;
 
         if (no_comentario->index >= static_cast<int>(g.nodes_catalog.size()))
-        {
             g.resize_graph(max((int)g.nodes_catalog.size() * 2, no_comentario->index + 1));
-        }
+
         g.nodes_catalog[no_comentario->index] = no_comentario;
 
         if (is_training)
@@ -143,4 +134,42 @@ void catch_coment_and_value(string pathCSV, graph &g, map<string, node *> &dicio
 
         review_count++;
     }
+}
+
+string classify_review(string frase, graph &g, map<string, node *> &dicionario)
+{
+    vector<string> word_list = word_catch(frase);
+
+    float score_positivo = 0.0f;
+    float score_negativo = 0.0f;
+
+    set<string> stopwords = {"and", "the", "a", "an", "is", "it", "to", "of", "this", "was",
+                             "in", "that", "i", "for", "with", "as", "on", "but", "are", "be"};
+
+    for (const string &word : word_list)
+    {
+        if (stopwords.count(word) || !dicionario.count(word))
+            continue;
+
+        ll_node *atual = g.adj_list[dicionario[word]->index];
+
+        float peso_pos = 0.0f;
+        float peso_neg = 0.0f;
+
+        while (atual != nullptr)
+        {
+            if (atual->data->index == 0) peso_pos = atual->weight;
+            else if (atual->data->index == 1) peso_neg = atual->weight;
+            atual = atual->prox;
+        }
+
+        if (peso_pos > peso_neg)
+            score_positivo += (peso_pos - peso_neg);
+        else if (peso_neg > peso_pos)
+            score_negativo += (peso_neg - peso_pos);
+    }
+
+    if (score_positivo > score_negativo) return "positive";
+    if (score_negativo > score_positivo) return "negative";
+    return "neutral";
 }

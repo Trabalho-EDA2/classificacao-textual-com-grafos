@@ -90,5 +90,15 @@ int main()
     cout << "Predicoes negative: " << negative_predictions << endl;
     cout << "Predicoes neutral (empate): " << neutral_predictions << endl;
 
+    cout << "\n--- Classificando comentarios novos ---" << endl;
+    string frase_1 = "This cinematographic artwork was absolutely beautiful and amazing!";
+    string frase_2 = "Worst experience ever. Extremely boring, terrible direction and bad acting.";
+
+    cout << "Frase 1: " << frase_1 << endl;
+    cout << "Resultado: " << classify_review(frase_1, g, dicionario) << endl;
+
+    cout << "\nFrase 2: " << frase_2 << endl;
+    cout << "Resultado: " << classify_review(frase_2, g, dicionario) << endl;
+
     return 0;
 }

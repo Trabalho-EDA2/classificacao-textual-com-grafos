@@ -1,34 +1,34 @@
 #include "tokenizer.hpp"
-#include <sstream>
 #include <vector>
 #include <string>
 #include <cctype>
+#include <algorithm>
 
 using namespace std;
 
 vector<string> word_catch(string phrase)
 {
-    stringstream ss(phrase);
-    string word;
     vector<string> words;
+    string word = "";
 
-    while (ss >> word)
+    for (char c : phrase)
     {
-        string cleaned_word = "";
-
-        
-        for (char c : word)
+        if (isalnum(c))
         {
-            if (!ispunct(c))
-            {
-                cleaned_word += static_cast<char>(tolower(static_cast<unsigned char>(c)));
-            }
+            word += c;
         }
-
-        if (!cleaned_word.empty())
+        else if (!word.empty())
         {
-            words.push_back(cleaned_word);
+            transform(word.begin(), word.end(), word.begin(), ::tolower);
+            words.push_back(word);
+            word = "";
         }
+    }
+
+    if (!word.empty())
+    {
+        transform(word.begin(), word.end(), word.begin(), ::tolower);
+        words.push_back(word);
     }
 
     return words;

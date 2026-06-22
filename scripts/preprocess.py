@@ -1,11 +1,6 @@
 from pathlib import Path
 import sys
 
-import pandas as pd
-import spacy
-from tqdm.auto import tqdm
-
-
 SOURCE_PATH = Path("data/IMDB_dataset.csv")
 TARGET_PATH = Path("data/IMDB_processed.csv")
 FORCE_REPROCESS = "--force" in sys.argv
@@ -14,11 +9,16 @@ if TARGET_PATH.exists() and not FORCE_REPROCESS:
     print(f"Arquivo ja existe, pulando preprocessamento: {TARGET_PATH}")
     sys.exit(0)
 
+import pandas as pd
+import spacy
+from tqdm.auto import tqdm
+
 tqdm.pandas()
 
 nlp = spacy.load("en_core_web_sm")
 
 df = pd.read_csv(SOURCE_PATH)
+
 
 def preprocess(text):
     doc = nlp(text)
@@ -38,6 +38,7 @@ def preprocess(text):
         lemmas.append(lemma)
 
     return " ".join(lemmas)
+
 
 processed_df = df[["review", "sentiment"]].copy()
 processed_df["processed"] = processed_df["review"].progress_apply(preprocess)

@@ -3,11 +3,18 @@
 
 #include <string>
 #include <map>
-#include "new_graph.hpp"
+#include <vector>
+#include "graph.hpp"
 
 using namespace std;
 
-void catch_coment_and_value(string pathCSV, graph &g, map<string, node*> &dicionario, int &curr_index);
-string classify_review(string frase, graph &g, map<string, node*> &dicionario);
+struct test_sample
+{
+    node *comment;
+    string true_sentiment;
+};
+
+void catch_coment_and_value(string pathCSV, graph &g, map<string, node *> &dicionario,
+                            int &curr_index, vector<test_sample> &test_samples);
 
 #endif

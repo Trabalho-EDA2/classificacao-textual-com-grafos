@@ -2,9 +2,9 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <set>
 #include "dataset.hpp"
 #include "tokenizer.hpp"
-#include <set> 
 
 using namespace std;
 
@@ -19,9 +19,41 @@ namespace
 
         return value;
     }
+
+    node *get_or_create_word(graph &g, map<string, node *> &dicionario, int &curr_index, const string &word)
+    {
+        if (dicionario.count(word))
+            return dicionario[word];
+
+        node *new_word = new node();
+        new_word->data = word;
+        new_word->type = WORD;
+        new_word->index = curr_index++;
+
+        if (new_word->index >= static_cast<int>(g.nodes_catalog.size()))
+        {
+            g.resize_graph(max((int)g.nodes_catalog.size() * 2, new_word->index + 1));
+        }
+        g.nodes_catalog[new_word->index] = new_word;
+        dicionario[word] = new_word;
+
+        return new_word;
+    }
+
+    void add_cooccurrence_edges(graph &g, const vector<node *> &unique_words)
+    {
+        for (size_t i = 0; i < unique_words.size(); i++)
+        {
+            for (size_t j = i + 1; j < unique_words.size(); j++)
+            {
+                g.add_edge(unique_words[i], unique_words[j]);
+            }
+        }
+    }
 }
 
-void catch_coment_and_value(string pathCSV, graph &g, map<string, node *> &dicionario, int &curr_index)
+void catch_coment_and_value(string pathCSV, graph &g, map<string, node *> &dicionario,
+                            int &curr_index, vector<test_sample> &test_samples)
 {
     ifstream arquivo(pathCSV);
 
@@ -32,148 +64,83 @@ void catch_coment_and_value(string pathCSV, graph &g, map<string, node *> &dicio
     }
 
     string linha;
-
     getline(arquivo, linha);
 
-    int qtdToTest = 0;
+    int review_count = 0;
     const int maxReviews = 10000;
+    const int train_limit = static_cast<int>(maxReviews * 0.8);
 
     while (getline(arquivo, linha))
     {
         if (linha.empty())
             continue;
-        if (qtdToTest == maxReviews)
+        if (review_count == maxReviews)
             break;
 
         size_t separator = linha.find_last_of(',');
 
-        if (separator != string::npos)
+        if (separator == string::npos)
         {
-            string frase = linha.substr(0, separator);
-            string sentiment = trim_carriage_return(linha.substr(separator + 1));
+            review_count++;
+            continue;
+        }
 
-            if (frase.empty())
-            {
-                qtdToTest++;
-                continue;
-            }
+        string frase = linha.substr(0, separator);
+        string sentiment = trim_carriage_return(linha.substr(separator + 1));
 
-            node *no_comentario = new node();
-            no_comentario->data = frase;
-            no_comentario->type = TEXT;
-            no_comentario->index = curr_index++;
+        if (frase.empty())
+        {
+            review_count++;
+            continue;
+        }
 
-            if (no_comentario->index >= g.nodes_catalog.size())
-            {
-                g.resize_graph(max((int)g.nodes_catalog.size() * 2, no_comentario->index + 1));
-            }
-            g.nodes_catalog[no_comentario->index] = no_comentario;
+        if (sentiment != "positive" && sentiment != "negative")
+        {
+            review_count++;
+            continue;
+        }
 
-            node *no_sentiment_atual = nullptr;
-            if (sentiment == "positive")
-            {
-                no_sentiment_atual = g.nodes_catalog[0];
-            }
-            else if (sentiment == "negative")
-            {
-                no_sentiment_atual = g.nodes_catalog[1];
-            }
-            else
-            {
-                qtdToTest++;
-                continue;
-            }
+        bool is_training = review_count < train_limit;
 
+        node *no_comentario = new node();
+        no_comentario->data = frase;
+        no_comentario->type = TEXT;
+        no_comentario->index = curr_index++;
+
+        if (no_comentario->index >= static_cast<int>(g.nodes_catalog.size()))
+        {
+            g.resize_graph(max((int)g.nodes_catalog.size() * 2, no_comentario->index + 1));
+        }
+        g.nodes_catalog[no_comentario->index] = no_comentario;
+
+        if (is_training)
+        {
+            node *no_sentiment_atual = (sentiment == "positive") ? g.nodes_catalog[0] : g.nodes_catalog[1];
             g.add_edge(no_comentario, no_sentiment_atual);
+        }
+        else
+        {
+            test_samples.push_back({no_comentario, sentiment});
+        }
 
-            vector<string> word_list = word_catch(frase);
+        vector<string> word_list = word_catch(frase);
+        set<string> seen_words;
+        vector<node *> unique_word_nodes;
 
-            for (string word : word_list)
+        for (const string &word : word_list)
+        {
+            node *word_node = get_or_create_word(g, dicionario, curr_index, word);
+            g.add_edge(no_comentario, word_node);
+
+            if (!seen_words.count(word))
             {
-                node *word_node = nullptr;
-
-                if (!dicionario.count(word))
-                {
-                    node *new_word = new node();
-                    new_word->data = word;
-                    new_word->type = WORD;
-                    new_word->index = curr_index++;
-
-                    if (new_word->index >= g.nodes_catalog.size())
-                    {
-                        g.resize_graph(max((int)g.nodes_catalog.size() * 2, new_word->index + 1));
-                    }
-                    g.nodes_catalog[new_word->index] = new_word;
-                    dicionario[word] = new_word;
-
-                    word_node = new_word;
-                }
-                else
-                {
-                    node *word_existence = dicionario[word];
-                    word_node = word_existence;
-                }
-
-                g.add_edge(no_comentario, word_node);
-                g.add_edge(word_node, no_sentiment_atual);
+                seen_words.insert(word);
+                unique_word_nodes.push_back(word_node);
             }
         }
-        qtdToTest++;
+
+        add_cooccurrence_edges(g, unique_word_nodes);
+
+        review_count++;
     }
-}
-
-string classify_review(string frase, graph &g, map<string, node *> &dicionario)
-{
-    vector<string> word_list = word_catch(frase);
-
-    float score_positivo = 0.0f;
-    float score_negativo = 0.0f;
-    
-    set<string> stopwords = {"and", "the", "a", "an", "is", "it", "to", "of", "this", "was", "in", "that", "i", "for", "with", "as", "on", "but", "are", "be"};
-
-    cout << "\n[DEBUG] Analisando a frase: " << frase << endl;
-
-    for (string word : word_list)
-    {
-        // 1. Ignora se for Stopword
-        if (stopwords.count(word)) {
-            cout << "  [PULADA] '" << word << "' (Stopword ignorada)" << endl;
-            continue;
-        }
-
-        // 2. Ignora se não existir no grafo
-        if (!dicionario.count(word)) {
-            cout << "  [INEDITA] '" << word << "' (Nao existe no grafo)" << endl;
-            continue;
-        }
-
-        int word_index = dicionario[word]->index;
-        ll_node *atual = g.adj_list[word_index];
-
-        float peso_pos = 0.0f;
-        float peso_neg = 0.0f;
-
-        while (atual != nullptr)
-        {
-            if (atual->data->index == 0) peso_pos = atual->weight;
-            else if (atual->data->index == 1) peso_neg = atual->weight;
-            
-            atual = atual->prox;
-        }
-        
-        // Em vez de somar o peso bruto, somamos a DIFERENÇA. 
-        if (peso_pos > peso_neg) {
-            score_positivo += (peso_pos - peso_neg);
-        } else if (peso_neg > peso_pos) {
-            score_negativo += (peso_neg - peso_pos);
-        }
-
-        cout << "  -> '" << word << "' | POS: " << peso_pos << " | NEG: " << peso_neg << endl;
-    }
-
-    cout << ">>> PONTUACAO FINAL -> POSITIVA: " << score_positivo << " | NEGATIVA: " << score_negativo << endl;
-
-    if (score_positivo > score_negativo) return "positive";
-    else if (score_negativo > score_positivo) return "negative";
-    else return "neutral";
 }

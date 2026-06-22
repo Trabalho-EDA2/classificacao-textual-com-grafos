@@ -3,33 +3,39 @@
 #include <vector>
 #include <string>
 #include <cctype>
+#include <algorithm>
+
+
+
 
 using namespace std;
 
 vector<string> word_catch(string phrase)
 {
-    stringstream ss(phrase);
-    string word;
     vector<string> words;
-
-    while (ss >> word)
-    {
-        string cleaned_word = "";
-
-        
-        for (char c : word)
+    string word = "";
+    
+        for (char c : phrase)
         {
-            if (!ispunct(c))
+            if (isalnum(c))
             {
-                cleaned_word += static_cast<char>(tolower(static_cast<unsigned char>(c)));
+                word += c;
+            }
+            else if(!word.empty()){
+                transform(word.begin(), word.end(), word.begin(), ::tolower);
+                
+                words.push_back(word);
+
+                word = "";
             }
         }
 
-        if (!cleaned_word.empty())
+        if (!word.empty())
         {
-            words.push_back(cleaned_word);
+            transform(word.begin(), word.end(), word.begin(), ::tolower);
+            words.push_back(word);
         }
-    }
+    
 
     return words;
 }

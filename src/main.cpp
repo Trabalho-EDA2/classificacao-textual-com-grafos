@@ -75,6 +75,17 @@ int main(){
     cout << "Grafo preenchido com sucesso!" << endl;
     
     // g.print_adj_list();
+
+    string frase_teste_1 = "This cinematographic artwork was absolutely beautiful and amazing!";
+    string frase_teste_2 = "Worst experience ever. Extremely boring, terrible direction and bad acting.";
+
+    cout << "\n--- Testando o Classificador do Grafo ---" << endl;
+    
+    cout << "Frase 1: " << frase_teste_1 << endl;
+    cout << "Palpite do Grafo: " << classify_review(frase_teste_1, g, dicionario) << endl;
+    
+    cout << "\nFrase 2: " << frase_teste_2 << endl;
+    cout << "Palpite do Grafo: " << classify_review(frase_teste_2, g, dicionario) << endl;
     
     return 0;
 }

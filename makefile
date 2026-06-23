@@ -3,7 +3,7 @@ PYTHON = py -3
 SPACY_MODEL = en_core_web_sm
 APP = app.exe
 
-SRC = src/main.cpp src/tokenizer.cpp src/dataset.cpp src/new_graph.cpp
+SRC = src/main.cpp src/tokenizer.cpp src/dataset.cpp src/graph.cpp
 OBJ = $(SRC:.cpp=.o)
 
 .PHONY: all setup preprocess build run clean

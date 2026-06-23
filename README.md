@@ -1,168 +1,132 @@
-# Analise de Sentimentos de Avaliacoes de Filmes com Grafos
+# Classificação de textos com grafos
 
-Projeto da disciplina que usa o dataset do IMDB para representar avaliacoes de filmes como um grafo. A ideia central e transformar reviews, palavras e rotulos de sentimento em nos conectados, para depois explorar essas relacoes na classificacao.
+Classificador binário de sentimentos para reviews do IMDB. O pré-processamento é feito em Python com SpaCy; o grafo, a fila e a busca em largura (BFS) foram implementados em C++.
 
-## Visao geral
+## Fluxo
 
-O projeto segue um fluxo hibrido:
-
-- Python prepara o texto do dataset.
-- C++ constroi e povoa o grafo.
-
-Essa divisao foi escolhida porque o preprocessamento linguistico com lematizacao e bem mais simples com SpaCy, enquanto a estrutura de dados principal foi implementada em C++.
-
-## Fluxo de informacoes
-
-```mermaid
-flowchart LR
-    A[data/IMDB_dataset.csv] --> B[scripts/preprocess.py]
-    B --> C[data/IMDB_processed.csv]
-    C --> D[src/dataset.cpp]
-    D --> E[src/tokenizer.cpp]
-    E --> F[src/new_graph.cpp]
-    F --> G[Grafo com nos TEXT WORD SENTIMENT]
+```text
+IMDB_dataset.csv
+        |
+        v
+preprocess.py (SpaCy)
+        |
+        v
+IMDB_processed.csv
+        |
+        v
+Grafo TEXT <-> WORD
+      TEXT <-> SENTIMENT
+        |
+        v
+BFS: WORD -> TEXT -> SENTIMENT
 ```
 
-## O que o preprocessamento faz
+O SpaCy aplica às reviews:
 
-O script [scripts/preprocess.py](scripts/preprocess.py) le o arquivo `data/IMDB_dataset.csv` e gera `data/IMDB_processed.csv`.
+- conversão para minúsculas;
+- tokenização e lematização;
+- remoção de stopwords e tokens não alfabéticos.
 
-Durante esse passo, cada review passa por:
+O CSV resultante contém as colunas `processed` e `sentiment`.
 
-- tokenizacao com SpaCy
-- remocao de stopwords
-- remocao de artigos como `a`, `an` e `the`
-- remocao de tokens que nao sao alfabeticos
-- lematizacao
-- conversao para minusculas
+## Grafo e classificação
 
-O arquivo final salvo pelo Python contem apenas duas colunas:
+O grafo possui três tipos de nós:
 
-- `processed`: texto limpo e lematizado
-- `sentiment`: rotulo original da review
+- `TEXT`: review processada;
+- `WORD`: palavra compartilhada entre reviews;
+- `SENTIMENT`: `POSITIVO` ou `NEGATIVO`.
 
-Importante:
-o script nao reprocessa o dataset se `data/IMDB_processed.csv` ja existir. Se voce quiser gerar o arquivo novamente, rode:
+Não existem arestas diretas entre palavras e sentimentos. A BFS é usada dentro de `classify_review`, em [src/dataset.cpp](src/dataset.cpp), para localizar reviews de treino relacionadas à entrada. Para cada palavra distinta da consulta, o código chama `bounded_bfs` com profundidade máxima 2 e restringe os tipos aceitos em cada nível:
+
+```text
+WORD -> TEXT -> SENTIMENT
+```
+
+O método `bounded_bfs`, implementado em [src/graph.cpp](src/graph.cpp), funciona assim:
+
+1. coloca a palavra inicial na fila com profundidade `0`;
+2. retira os nós na ordem de chegada;
+3. em `WORD`, adiciona apenas vizinhos `TEXT`;
+4. em `TEXT`, adiciona apenas o vizinho `SENTIMENT`;
+5. interrompe a expansão ao atingir a profundidade `2`.
+
+Um vetor de visitados impede que o mesmo nó seja enfileirado mais de uma vez durante cada busca. Os nós `TEXT` encontrados no nível `1` são contabilizados como reviews candidatas. Uma review pode receber correspondências de diferentes palavras da consulta.
+
+### Fila da BFS
+
+A classe `bfs_queue`, declarada em [src/graph.hpp](src/graph.hpp) e implementada em `src/graph.cpp`, substitui `std::queue`. Ela usa um vetor dinâmico circular e armazena, em cada item, o ponteiro para o nó e sua profundidade.
+
+- `enqueue`: insere no final da fila;
+- `dequeue`: remove do início;
+- `head` e `count`: controlam a região ocupada sem deslocar elementos;
+- `grow`: dobra a capacidade quando a fila fica cheia e preserva a ordem.
+
+Essa fila garante a exploração por níveis característica da BFS. Como a busca é limitada a dois níveis e filtrada por tipo, ela não percorre o grafo inteiro.
+
+Cada review candidata recebe o seguinte peso:
+
+```text
+score = palavras compartilhadas / palavras distintas da review
+```
+
+Os scores são somados por sentimento, sem TF-IDF. Em caso de empate, vence a classe mais frequente no treino.
+
+## Treino e avaliação
+
+O fluxo atual usa `data/IMDB_processed.csv`:
+
+- primeiras 1.000 reviews: treinamento;
+- 1.000 reviews seguintes: teste de acurácia.
+
+Esses conjuntos não se sobrepõem. Na execução atual, o programa também apresenta duas classificações de exemplo antes da avaliação.
+
+## Execução
+
+Requisitos: Python 3, GNU Make e compilador C++ com suporte a C++17.
+
+```bash
+make setup       # instala pandas, spacy, tqdm e en_core_web_sm
+make preprocess  # gera data/IMDB_processed.csv
+make build       # compila app.exe
+make run         # executa o fluxo completo
+```
+
+Para recriar o CSV processado:
 
 ```bash
 py -3 scripts/preprocess.py --force
 ```
 
-## Como o grafo e montado
+Para remover objetos e o executável:
 
-O programa em C++ cria tres tipos de nos:
+```bash
+make clean
+```
 
-- `TEXT`: uma review processada
-- `WORD`: uma palavra da review
-- `SENTIMENT`: um rotulo de sentimento
+## Entrada interativa
 
-Hoje os nos de sentimento criados sao:
-
-- `POSITIVO`
-- `NEGATIVO`
-- `NEUTRO`
-
-Na pratica, o fluxo atual do dataset usa apenas `positive` e `negative`.
-
-Para cada review lida em [src/dataset.cpp](src/dataset.cpp), o programa:
-
-1. cria um no do tipo `TEXT`
-2. identifica o sentimento da review
-3. conecta `TEXT -> SENTIMENT`
-4. separa as palavras do texto processado
-5. cria ou reaproveita um no `WORD` para cada palavra
-6. conecta `TEXT -> WORD`
-7. conecta `WORD -> SENTIMENT`
-
-As arestas sao armazenadas em lista de adjacencia e possuem peso. Quando a mesma conexao aparece novamente, o peso da aresta aumenta.
-
-## Estrutura do projeto
+Depois da avaliação, o programa aceita reviews em inglês pelo teclado:
 
 ```text
-data/
-  IMDB_dataset.csv
-  IMDB_processed.csv
-scripts/
-  preprocess.py
-src/
-  main.cpp
-  dataset.cpp
-  dataset.hpp
-  tokenizer.cpp
-  tokenizer.hpp
-  new_graph.cpp
-  new_graph.hpp
-makefile
-requirements.txt
+> I loved this amazing movie
+Classificacao: positive
 ```
 
-## Como executar
+A entrada é normalizada para minúsculas e passa pelo mesmo pipeline SpaCy usado no dataset antes de ser enviada ao classificador. Digite `sair` ou uma linha vazia para encerrar.
 
-### 1. Preparar dependencias Python
+## Estrutura principal
 
-```bash
-make setup
+```text
+data/                 datasets original e processado
+scripts/preprocess.py pré-processamento SpaCy
+src/graph.*           grafo, fila circular e BFS
+src/dataset.*         treino, classificação e acurácia
+src/tokenizer.*       tokenização auxiliar em C++
+src/main.cpp          fluxo principal e modo interativo
 ```
 
-Esse alvo instala:
+## Limitações
 
-- `pandas`
-- `spacy`
-- `tqdm`
-- modelo `en_core_web_sm`
-
-### 2. Gerar o dataset processado
-
-```bash
-make preprocess
-```
-
-### 3. Compilar o codigo C++
-
-```bash
-make build
-```
-
-### 4. Rodar o projeto completo
-
-```bash
-make run
-```
-
-O alvo `run` executa o preprocessamento antes da aplicacao, mas so vai gerar o CSV processado se ele ainda nao existir.
-
-## Implementacao atual
-
-O estado atual do projeto ja cobre:
-
-- preprocessamento do dataset em Python
-- leitura do dataset processado em C++
-- construcao do grafo com reviews, palavras e sentimentos
-- reutilizacao de nos de palavras por meio de um dicionario
-- acumulacao de peso nas arestas repetidas
-- limite atual de leitura em 10.000 reviews
-
-## Limitacoes atuais
-
-- o no `NEUTRO` e criado, mas nao e usado pelo dataset atual
-- o projeto constroi o grafo, mas ainda nao aplica uma etapa final de classificacao automatica
-- nao ha testes automatizados no repositorio
-
-## Bibliotecas usadas
-
-### Python
-
-- `pandas`
-- `spacy`
-- `tqdm`
-
-### C++
-
-- `iostream`
-- `fstream`
-- `vector`
-- `string`
-- `map`
-- `sstream`
-- `cctype`
-
+- cada entrada interativa inicia um novo processo Python para carregar o SpaCy;
+- não há testes unitários automatizados.

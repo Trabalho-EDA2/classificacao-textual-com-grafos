@@ -68,23 +68,13 @@ Para cada review lida em [src/dataset.cpp](src/dataset.cpp), o programa:
 
 1. cria um no do tipo `TEXT`
 2. identifica o sentimento da review
-3. nos primeiros 80% (treino): conecta `TEXT -> SENTIMENT`
+3. conecta `TEXT -> SENTIMENT`
 4. separa as palavras do texto processado
 5. cria ou reaproveita um no `WORD` para cada palavra
-6. conecta `TEXT -> WORD` (peso = frequencia da palavra no comentario)
-7. conecta pares de palavras distintas do mesmo comentario via `WORD -> WORD` (peso = coocorrencia)
+6. conecta `TEXT -> WORD`
+7. conecta `WORD -> SENTIMENT`
 
-Os ultimos 20% das reviews formam o conjunto de teste: nao recebem aresta direta com sentimento e sao classificados via Dijkstra.
-
-## Classificacao
-
-Para cada comentario de teste, o algoritmo de Dijkstra calcula o menor caminho ate os nos `POSITIVO` e `NEGATIVO`, usando custo `1/peso` em cada aresta.
-
-- caminho mais curto para `POSITIVO` -> classe `positive`
-- caminho mais curto para `NEGATIVO` -> classe `negative`
-- empate entre os dois caminhos -> classe `neutral` (no `NEUTRO`)
-
-A fila encadeada em [src/queue.cpp](src/queue.cpp) e usada como estrutura auxiliar no Dijkstra (`graph::shortest_path` em [src/new_graph.cpp](src/new_graph.cpp)).
+As arestas sao armazenadas em lista de adjacencia e possuem peso. Quando a mesma conexao aparece novamente, o peso da aresta aumenta.
 
 ## Estrutura do projeto
 
@@ -102,64 +92,11 @@ src/
   tokenizer.hpp
   new_graph.cpp
   new_graph.hpp
-  queue.cpp
-  queue.hpp
 makefile
 requirements.txt
 ```
 
 ## Como executar
-
-### Terminal recomendado (MSYS2)
-
-Use o terminal **UCRT64** do MSYS2 (Menu Iniciar -> MSYS2 UCRT64), **nao** o MSYS puro.
-O terminal MSYS nao inclui as DLLs do UCRT64 no PATH. Por isso `build.bat` e `build.sh` configuram `PATH` automaticamente antes de compilar.
-
-Se estiver no MSYS ou PowerShell, compile com:
-
-```bash
-cmd //c build.bat
-./bin/app.exe
-```
-
-Ou abra o **UCRT64** e rode:
-
-```bash
-make run-cpp
-```
-
-Dependencias (no UCRT64):
-
-```bash
-pacman -S make mingw-w64-ucrt64-gcc mingw-w64-ucrt64-python python-pip
-```
-
-Verifique se as ferramentas foram detectadas:
-
-```bash
-make check-tools
-```
-
-**Erro de DLL do SpaCy no MSYS:** o Python instalado no Windows pode falhar ao importar SpaCy quando chamado pelo terminal MSYS. Solucoes:
-
-1. Se `data/IMDB_processed.csv` ja existir, pule o preprocessamento:
-   ```bash
-   make run-cpp
-   ```
-2. Para preprocessar, use o terminal **PowerShell** ou **UCRT64**:
-   ```bash
-   # PowerShell (na pasta do projeto)
-   py -3 scripts/preprocess.py
-
-   # ou UCRT64, apos instalar python pelo pacman
-   make setup-spacy
-   make preprocess
-   ```
-3. Se o SpaCy falhar ao importar, reinstale as dependencias nativas:
-   ```bash
-   py -3 -m pip install --force-reinstall numpy thinc spacy
-   py -3 -m spacy download en_core_web_sm
-   ```
 
 ### 1. Preparar dependencias Python
 
@@ -196,23 +133,20 @@ O alvo `run` executa o preprocessamento antes da aplicacao, mas so vai gerar o C
 
 ## Implementacao atual
 
-O estado atual do projeto cobre:
+O estado atual do projeto ja cobre:
 
 - preprocessamento do dataset em Python
 - leitura do dataset processado em C++
 - construcao do grafo com reviews, palavras e sentimentos
-- arestas de coocorrencia entre palavras
-- split 80% treino / 20% teste
-- classificacao via Dijkstra com fila encadeada
-- regra de empate classificando como `NEUTRO`
 - reutilizacao de nos de palavras por meio de um dicionario
 - acumulacao de peso nas arestas repetidas
 - limite atual de leitura em 10.000 reviews
 
 ## Limitacoes atuais
 
+- o no `NEUTRO` e criado, mas nao e usado pelo dataset atual
+- o projeto constroi o grafo, mas ainda nao aplica uma etapa final de classificacao automatica
 - nao ha testes automatizados no repositorio
-- o dataset IMDB nao possui rotulo `neutral`; predicoes neutras contam como erro na acuracia
 
 ## Bibliotecas usadas
 

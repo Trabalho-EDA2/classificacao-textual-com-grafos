@@ -1,5 +1,3 @@
 __pycache__
 *.o
 *.exe
-bin/
-build/

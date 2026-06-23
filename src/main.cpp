@@ -1,94 +1,91 @@
 #include <iostream>
-#include <cmath>
-#include <limits>
-#include "graph.hpp"
-#include "dataset.hpp"
+#include <cstdlib>
+#include "new_graph.hpp"
+#include "tokenizer.hpp"
 #include <map>
-#include <vector>
+#include "dataset.hpp"
 
 using namespace std;
 
-static bool distances_equal(float a, float b)
-{
-    if (std::isinf(a) && std::isinf(b))
-        return true;
-    return std::fabs(a - b) < 1e-6f;
-}
+int main(){
+   // system("python scripts/preprocess.py");
+   graph g(10000);
 
-static string predict_sentiment(graph &g, node *comment, node *positivo, node *negativo)
-{
-    float dist_pos = g.djikstra(comment, positivo);
-    float dist_neg = g.djikstra(comment, negativo);
-
-    if (distances_equal(dist_pos, dist_neg))
-        return "neutral";
-
-    if (dist_pos < dist_neg)
-        return "positive";
-
-    return "negative";
-}
-
-int main()
-{
-    graph g(10000);
-
-    node *positivo = new node();
+    node* positivo = new node();
     positivo->data = "POSITIVO";
     positivo->type = SENTIMENT;
     positivo->index = 0;
     g.nodes_catalog[0] = positivo;
 
-    node *negativo = new node();
+    node* negativo = new node();
     negativo->data = "NEGATIVO";
     negativo->type = SENTIMENT;
     negativo->index = 1;
     g.nodes_catalog[1] = negativo;
 
-    node *neutro = new node();
+    node* neutro = new node();
     neutro->data = "NEUTRO";
     neutro->type = SENTIMENT;
     neutro->index = 2;
     g.nodes_catalog[2] = neutro;
 
     int curr_index = 3;
-    map<string, node *> dicionario;
-    vector<test_sample> test_samples;
+    map<string, node*> dicionario;
+
+    // teste de inserção e arestas no grafo
+    // string texto_teste = "amazing movie i love it";
+    // node* no_comentario = new node();
+    
+    // no_comentario->data = texto_teste;
+    // no_comentario->type = TEXT;
+    // no_comentario->index = curr_index++;
+    // g.nodes_catalog[no_comentario->index] = no_comentario;
+    
+    // g.add_edge(no_comentario, positivo);
+
+    // vector<string> word_list = word_catch(texto_teste);
+
+    // for(string word: word_list){
+    //     if(!dicionario.count(word)){
+    //         node* new_word = new node();
+    //         new_word->data = word;
+    //         new_word->type = WORD;
+    //         new_word->index = curr_index++;
+
+    //         g.nodes_catalog[new_word->index] = new_word;
+
+    //         dicionario[word] = new_word;
+    //         g.add_edge(no_comentario, new_word);
+    //     }else{
+    //         node* word_existence = dicionario[word];
+
+    //         g.add_edge(no_comentario, word_existence);
+    //     }
+    // }
+    // g.print_adj_list();
+
+    // o teste finaliza aqui
 
     cout << "Povoando o grafo com as 10.000 linhas processadas do IMDB..." << endl;
-    catch_coment_and_value("data/IMDB_processed.csv", g, dicionario, curr_index, test_samples);
+
+    // 3. CHAMADA REAL DA SUA FUNÇÃO DO DATASET!
+    // Toda aquela lógica de criar nós de comentários e palavras vai acontecer aqui dentro.
+    catch_coment_and_value("data/IMDB_processed.csv", g, dicionario, curr_index);
+
     cout << "Grafo preenchido com sucesso!" << endl;
+    
+    // g.print_adj_list();
 
-    cout << "\nClassificando " << test_samples.size() << " comentarios de teste (20%)..." << endl;
+    string frase_teste_1 = "This cinematographic artwork was absolutely beautiful and amazing!";
+    string frase_teste_2 = "Worst experience ever. Extremely boring, terrible direction and bad acting.";
 
-    int correct = 0;
-    int neutral_predictions = 0;
-    int positive_predictions = 0;
-    int negative_predictions = 0;
-
-    for (const test_sample &sample : test_samples)
-    {
-        string predicted = predict_sentiment(g, sample.comment, positivo, negativo);
-
-        if (predicted == "neutral")
-            neutral_predictions++;
-        else if (predicted == "positive")
-            positive_predictions++;
-        else
-            negative_predictions++;
-
-        if (predicted == sample.true_sentiment)
-            correct++;
-    }
-
-    float accuracy = test_samples.empty() ? 0.0f
-                                          : (100.0f * correct) / static_cast<float>(test_samples.size());
-
-    cout << "\n--- Resultados ---" << endl;
-    cout << "Acuracia: " << accuracy << "% (" << correct << "/" << test_samples.size() << ")" << endl;
-    cout << "Predicoes positive: " << positive_predictions << endl;
-    cout << "Predicoes negative: " << negative_predictions << endl;
-    cout << "Predicoes neutral (empate): " << neutral_predictions << endl;
-
+    cout << "\n--- Testando o Classificador do Grafo ---" << endl;
+    
+    cout << "Frase 1: " << frase_teste_1 << endl;
+    cout << "Palpite do Grafo: " << classify_review(frase_teste_1, g, dicionario) << endl;
+    
+    cout << "\nFrase 2: " << frase_teste_2 << endl;
+    cout << "Palpite do Grafo: " << classify_review(frase_teste_2, g, dicionario) << endl;
+    
     return 0;
 }

@@ -1,3 +1,6 @@
 __pycache__
 *.o
 *.exe
+data/.interactive_*.txt
+slide
+NUL

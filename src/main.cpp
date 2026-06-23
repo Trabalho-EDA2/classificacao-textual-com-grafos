@@ -59,9 +59,9 @@ namespace
 
 int main(){
    // system("python scripts/preprocess.py");
-   graph g(4000);
+   graph g(3000);
     const string dataset_path = "data/IMDB_processed.csv";
-    const int linhas_treino = 3000;
+    const int linhas_treino = 2000;
     const int linhas_teste = 1000;
 
     node* positivo = new node();

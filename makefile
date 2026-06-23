@@ -28,16 +28,25 @@ endif
 
 CXX := $(shell command -v g++ 2>/dev/null)
 ifeq ($(CXX),)
+CXX := $(shell command -v c++ 2>/dev/null)
+endif
+ifeq ($(CXX),)
 CXX := $(shell test -x /ucrt64/bin/g++ && echo /ucrt64/bin/g++)
 endif
 ifeq ($(CXX),)
 CXX := $(shell test -x /mingw64/bin/g++ && echo /mingw64/bin/g++)
 endif
 ifeq ($(CXX),)
-CXX := g++
+$(error Compilador C++ nao encontrado. Instale g++ ou c++.)
 endif
 
 CXXFLAGS = -std=c++17 -Wall -Isrc
+
+OBJS = $(OUT_DIR)/main.o \
+       $(OUT_DIR)/tokenizer.o \
+       $(OUT_DIR)/dataset.o \
+       $(OUT_DIR)/graph.o \
+       $(OUT_DIR)/queue.o
 
 RUN_APP = ./$(APP)
 
@@ -48,9 +57,20 @@ all: run
 check-tools:
 	@echo "PYTHON = $(PYTHON)"
 	@echo "CXX    = $(CXX)"
-	@echo "WINPWD = $(WINPWD)"
 	@$(PYTHON) --version || echo "Python nao encontrado."
-	@$(CXX) --version || echo "g++ nao encontrado."
+	@$(CXX) --version | head -1
+
+$(OUT_DIR):
+	mkdir -p $(OUT_DIR)
+
+$(OUT_DIR)/%.o: src/%.cpp | $(OUT_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(APP): $(OBJS)
+	$(CXX) $(OBJS) -o $(APP)
+	@echo "OK: $(APP)"
+
+build: $(APP)
 
 setup:
 	$(PYTHON) -m pip install -r requirements.txt
@@ -65,9 +85,6 @@ download-spacy: setup
 preprocess:
 	$(PYTHON) scripts/preprocess.py
 
-build:
-	@bash "$(CURDIR)/build.sh"
-
 run: preprocess build
 	$(RUN_APP)
 
@@ -75,4 +92,4 @@ run-cpp: build
 	$(RUN_APP)
 
 clean:
-	rm -rf bin build app.exe
+	rm -rf $(OUT_DIR)

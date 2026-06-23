@@ -95,10 +95,10 @@ int main()
     string frase_2 = "Worst experience ever. Extremely boring, terrible direction and bad acting.";
 
     cout << "Frase 1: " << frase_1 << endl;
-    cout << "Resultado: " << classify_review(frase_1, g, dicionario) << endl;
+    cout << "Resultado: " << classify_review(frase_1, g, dicionario, curr_index) << endl;
 
     cout << "\nFrase 2: " << frase_2 << endl;
-    cout << "Resultado: " << classify_review(frase_2, g, dicionario) << endl;
+    cout << "Resultado: " << classify_review(frase_2, g, dicionario, curr_index) << endl;
 
     return 0;
 }

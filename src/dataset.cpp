@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <cmath>
+#include <limits>
 #include "dataset.hpp"
 #include "tokenizer.hpp"
 
@@ -136,40 +138,37 @@ void catch_coment_and_value(string pathCSV, graph &g, map<string, node *> &dicio
     }
 }
 
-string classify_review(string frase, graph &g, map<string, node *> &dicionario)
+string classify_review(string frase, graph &g, map<string, node *> &dicionario, int &curr_index)
 {
     vector<string> word_list = word_catch(frase);
 
-    float score_positivo = 0.0f;
-    float score_negativo = 0.0f;
+    node *novo_comentario = new node();
+    novo_comentario->data = frase;
+    novo_comentario->type = TEXT;
+    novo_comentario->index = curr_index++;
 
-    set<string> stopwords = {"and", "the", "a", "an", "is", "it", "to", "of", "this", "was",
-                             "in", "that", "i", "for", "with", "as", "on", "but", "are", "be"};
+    if (novo_comentario->index >= static_cast<int>(g.nodes_catalog.size()))
+        g.resize_graph(max((int)g.nodes_catalog.size() * 2, novo_comentario->index + 1));
+
+    g.nodes_catalog[novo_comentario->index] = novo_comentario;
 
     for (const string &word : word_list)
     {
-        if (stopwords.count(word) || !dicionario.count(word))
+        if (!dicionario.count(word))
             continue;
-
-        ll_node *atual = g.adj_list[dicionario[word]->index];
-
-        float peso_pos = 0.0f;
-        float peso_neg = 0.0f;
-
-        while (atual != nullptr)
-        {
-            if (atual->data->index == 0) peso_pos = atual->weight;
-            else if (atual->data->index == 1) peso_neg = atual->weight;
-            atual = atual->prox;
-        }
-
-        if (peso_pos > peso_neg)
-            score_positivo += (peso_pos - peso_neg);
-        else if (peso_neg > peso_pos)
-            score_negativo += (peso_neg - peso_pos);
+        g.add_edge(novo_comentario, dicionario[word]);
     }
 
-    if (score_positivo > score_negativo) return "positive";
-    if (score_negativo > score_positivo) return "negative";
+    node *positivo = g.nodes_catalog[0];
+    node *negativo  = g.nodes_catalog[1];
+
+    float dist_pos = g.djikstra(novo_comentario, positivo);
+    float dist_neg = g.djikstra(novo_comentario, negativo);
+
+    if (std::isinf(dist_pos) && std::isinf(dist_neg))
+        return "neutral";
+
+    if (dist_pos < dist_neg) return "positive";
+    if (dist_neg < dist_pos) return "negative";
     return "neutral";
 }

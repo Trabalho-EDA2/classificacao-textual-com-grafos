@@ -17,6 +17,6 @@ struct test_sample
 void catch_coment_and_value(string pathCSV, graph &g, map<string, node *> &dicionario,
                             int &curr_index, vector<test_sample> &test_samples);
 
-string classify_review(string frase, graph &g, map<string, node *> &dicionario);
+string classify_review(string frase, graph &g, map<string, node *> &dicionario, int &curr_index);
 
 #endif

@@ -1,15 +1,68 @@
 #include <iostream>
 #include <cstdlib>
-#include "new_graph.hpp"
+#include <cstdio>
+#include <algorithm>
+#include <cctype>
+#include <fstream>
+#include "graph.hpp"
 #include "tokenizer.hpp"
 #include <map>
+#include <string>
 #include "dataset.hpp"
 
 using namespace std;
 
+namespace
+{
+    string to_lowercase(string text)
+    {
+        transform(text.begin(), text.end(), text.begin(), [](unsigned char character)
+        {
+            return static_cast<char>(tolower(character));
+        });
+        return text;
+    }
+
+    bool preprocess_keyboard_input(const string &input, string &processed)
+    {
+        const string input_path = "data/.interactive_input.txt";
+        const string output_path = "data/.interactive_processed.txt";
+
+        ofstream input_file(input_path, ios::binary);
+        if (!input_file.is_open())
+        {
+            return false;
+        }
+        input_file << input;
+        input_file.close();
+
+        remove(output_path.c_str());
+        int status = system(
+            "py -3 scripts/preprocess.py "
+            "--text-file data/.interactive_input.txt "
+            "--output-text-file data/.interactive_processed.txt");
+
+        ifstream output_file(output_path, ios::binary);
+        bool success = status == 0 && output_file.is_open();
+
+        if (success)
+        {
+            getline(output_file, processed, '\0');
+        }
+
+        output_file.close();
+        remove(input_path.c_str());
+        remove(output_path.c_str());
+        return success;
+    }
+}
+
 int main(){
    // system("python scripts/preprocess.py");
-   graph g(10000);
+   graph g(4000);
+    const string dataset_path = "data/IMDB_processed.csv";
+    const int linhas_treino = 3000;
+    const int linhas_teste = 1000;
 
     node* positivo = new node();
     positivo->data = "POSITIVO";
@@ -23,13 +76,7 @@ int main(){
     negativo->index = 1;
     g.nodes_catalog[1] = negativo;
 
-    node* neutro = new node();
-    neutro->data = "NEUTRO";
-    neutro->type = SENTIMENT;
-    neutro->index = 2;
-    g.nodes_catalog[2] = neutro;
-
-    int curr_index = 3;
+    int curr_index = 2;
     map<string, node*> dicionario;
 
     // teste de inserção e arestas no grafo
@@ -66,11 +113,12 @@ int main(){
 
     // o teste finaliza aqui
 
-    cout << "Povoando o grafo com as 10.000 linhas processadas do IMDB..." << endl;
+    cout << "Povoando o grafo com as linhas processadas do IMDB..." << endl;
 
     // 3. CHAMADA REAL DA SUA FUNÇÃO DO DATASET!
     // Toda aquela lógica de criar nós de comentários e palavras vai acontecer aqui dentro.
-    catch_coment_and_value("data/IMDB_processed.csv", g, dicionario, curr_index);
+    catch_coment_and_value(
+        dataset_path, g, dicionario, curr_index, linhas_treino);
 
     cout << "Grafo preenchido com sucesso!" << endl;
     
@@ -86,6 +134,46 @@ int main(){
     
     cout << "\nFrase 2: " << frase_teste_2 << endl;
     cout << "Palpite do Grafo: " << classify_review(frase_teste_2, g, dicionario) << endl;
+
+    test_accuracy(
+        dataset_path, g, dicionario, linhas_treino, linhas_teste);
+
+    cout << "--- CLASSIFICADOR INTERATIVO ---" << endl;
+    cout << "Digite uma review em ingles para classificar." << endl;
+    cout << "Use 'sair' ou uma linha vazia para encerrar.\n" << endl;
+
+    string entrada;
+    while (true)
+    {
+        cout << "> ";
+
+        if (!getline(cin, entrada) || entrada.empty())
+        {
+            break;
+        }
+
+        entrada = to_lowercase(entrada);
+        if (entrada == "sair")
+        {
+            break;
+        }
+
+        string entrada_processada;
+        if (!preprocess_keyboard_input(entrada, entrada_processada))
+        {
+            cerr << "Nao foi possivel preprocessar a entrada com SpaCy.\n" << endl;
+            continue;
+        }
+        if (entrada_processada.empty())
+        {
+            cout << "A entrada nao possui palavras validas apos o preprocessamento.\n" << endl;
+            continue;
+        }
+
+        string resultado = classify_review(
+            entrada_processada, g, dicionario, false);
+        cout << "Classificacao: " << resultado << "\n" << endl;
+    }
     
     return 0;
 }
